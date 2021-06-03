@@ -16,9 +16,11 @@ from lib.gatt_const import *
 from its_mods import * 
 
 mainloop = None
+veh_status_service = None
 
 def register_app_cb():
     print('GATT application registered')
+    veh_status_service.listen_to_updates()
 
 
 def register_app_error_cb(error):
@@ -39,6 +41,7 @@ def find_adapter(bus):
 
 def main():
     global mainloop
+    global veh_status_service
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -53,7 +56,8 @@ def main():
             bus.get_object(BLUEZ_SERVICE_NAME, adapter),
             GATT_MANAGER_IFACE)
 
-    app = Application(bus, VehicleStatusService(bus, 0))
+    veh_status_service = VehicleStatusService(bus, 0)
+    app = Application(bus, veh_status_service)
 
     mainloop = GLib.MainLoop()
 

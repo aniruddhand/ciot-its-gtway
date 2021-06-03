@@ -11,16 +11,30 @@ from lib.gatt_chr import Characteristic
 from lib.gatt_dsc import Descriptor
 from lib.gatt_const  import * 
 
+from its_can_mod import VehicleCANModule 
+
 class VehicleStatusService(Service):
     VS_UUID = '0f7d0ee7-ab1f-47cf-93ed-9ef8038f8bec'
     
+    _veh_status_chr = None
+
     def __init__(self, bus, index):
         Service.__init__(self, bus, index, self.VS_UUID, True)
-        self.add_characteristic(VehicleStatusCharacteristic(bus, 0, self))
+      
+        self._veh_status_chr = VehicleStatusCharacteristic(bus, 0, self)
+        self.add_characteristic(self._veh_status_chr)
+
+    def listen_to_updates(self):
+        self._veh_status_chr.hook_to_can()
+
+    def stop_listening_to_updates(self):
+        self._veh_status_chr.unhook_from_can()
 
 
 class VehicleStatusCharacteristic(Characteristic):
     VSC_UUID = '0f7d0ee8-ab1f-47cf-93ed-9ef8038f8bec'
+
+    _veh_can_mod = None
 
     def __init__(self, bus, index, service):
         Characteristic.__init__(
@@ -30,30 +44,25 @@ class VehicleStatusCharacteristic(Characteristic):
                 service)
         self.add_descriptor(VehicleStatusCharacteristicUDDescriptor(bus, 0, self))
         self.notifying = False
+        self._veh_can_mod = VehicleCANModule()
+
+    def hook_to_can(self):
+        self._veh_can_mod.start_listening(self.update_cb)
+
+    def unhook_from_can(self):
+        self._ven_can_mod.stop_listening()
 
     """
-        Vehicle Status callback
+    Vehicle Status callback called from itc_can_mod.py
     """
-    def veh_status_update_cb(self):
+    def update_cb(self, temperature):
         value = []
-        veh_status = bytearray("38.23,100,191982.22332,98329832.2732789,N","utf-8")
 
-        for byte in veh_status:
+        for byte in bytearray(str(temperature), 'utf-8'):
             value.append(dbus.Byte(byte))
 
-        print('Updating value...')
-
         self.PropertiesChanged(GATT_CHRC_IFACE, { 'Value': value }, [])
-
         return self.notifying
-
-    def _update_veh_status(self):
-        print('Update Vehicle Status')
-
-        if not self.notifying:
-            return
-
-        GLib.timeout_add(1000, self.veh_status_update_cb)
 
     def StartNotify(self):
         if self.notifying:
@@ -61,7 +70,6 @@ class VehicleStatusCharacteristic(Characteristic):
             return
 
         self.notifying = True
-        self._update_veh_status()
 
     def StopNotify(self):
         if not self.notifying:
@@ -69,7 +77,6 @@ class VehicleStatusCharacteristic(Characteristic):
             return
 
         self.notifying = False
-        self._update_veh_status()
 
 
 class VehicleStatusCharacteristicUDDescriptor(Descriptor):
