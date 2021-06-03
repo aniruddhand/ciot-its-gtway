@@ -20,7 +20,7 @@ class VehicleStatusService(Service):
 
 
 class VehicleStatusCharacteristic(Characteristic):
-    VSC_UUID = '0f7d0ee7-ab1f-47cf-93ed-9ef8038f8bec'
+    VSC_UUID = '0f7d0ee8-ab1f-47cf-93ed-9ef8038f8bec'
 
     def __init__(self, bus, index, service):
         Characteristic.__init__(
@@ -41,7 +41,7 @@ class VehicleStatusCharacteristic(Characteristic):
         for byte in veh_status:
             value.append(dbus.Byte(byte))
 
-        print('Updating value: ' + repr(value))
+        print('Updating value...')
 
         self.PropertiesChanged(GATT_CHRC_IFACE, { 'Value': value }, [])
 
