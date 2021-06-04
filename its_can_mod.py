@@ -14,14 +14,18 @@ class PeripheralDeviceListener(Listener):
     def on_message_received(self, msg):
         if msg is None or self._callback is None:
             return
+    
+        if self._check_msg(msg) is False:
+            return
 
-        self._callback(self._get_temperature(msg))
+        self._callback(msg.data)
 
-    def _get_temperature(self, msg):
+    def _check_msg(self, msg):
         if msg.is_error_frame:
-            print('Error frame received on CAN ifc at ' + msg.timestamp)
+            print('Error frame received on CAN ifc at ' + repr(msg.timestamp))
+            return False
 
-        return msg.data[0]
+        return True
 
 class VehicleCANModule:
     _msg_listener = None
@@ -34,6 +38,8 @@ class VehicleCANModule:
         self._msg_listener = PeripheralDeviceListener(self.on_msg)
         self._bus = can.interface.Bus(bustype='socketcan',
                                         channel='can0', bitrate=500000)
+
+        print('Initialized CAN interface, ready to receive messages')
     
     def on_msg(self, temperature):
         if not self._listening:
@@ -56,6 +62,7 @@ class VehicleCANModule:
         within this time frame then listener would be notified with the
         message received
         """
+        print('Creating CAN message listener')
         self._notifier = can.Notifier(self._bus, [ self._msg_listener ], 2.0, None)
     
     def stop_listening(self):

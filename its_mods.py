@@ -13,6 +13,8 @@ from lib.gatt_const  import *
 
 from its_can_mod import VehicleCANModule 
 
+VEH_ID = 'fa438cb3-b805-4050-844a-413fa01335c9'
+
 class VehicleStatusService(Service):
     VS_UUID = '0f7d0ee7-ab1f-47cf-93ed-9ef8038f8bec'
     
@@ -55,13 +57,26 @@ class VehicleStatusCharacteristic(Characteristic):
     """
     Vehicle Status callback called from itc_can_mod.py
     """
-    def update_cb(self, temperature):
-        value = []
+    def update_cb(self, data):
+        jsonData = '{ "vehicleID": "$id", "temperature": $temperature }'
+        rawValue = []
 
-        for byte in bytearray(str(temperature), 'utf-8'):
-            value.append(dbus.Byte(byte))
+        for i in range(len(data)):
+            # We only have temperature data
+            if i > 0:
+                break
+            
+            if i == 0:
+                jsonData = jsonData.replace("$temperature", str(data[i]))
 
-        self.PropertiesChanged(GATT_CHRC_IFACE, { 'Value': value }, [])
+        jsonData = jsonData.replace("$id", VEH_ID)
+
+        print('BLE notification: ' + jsonData)
+
+        for byte in bytearray(str(jsonData), 'utf-8'):
+            rawValue.append(dbus.Byte(byte))
+
+        self.PropertiesChanged(GATT_CHRC_IFACE, { 'Value': rawValue }, [])
         return self.notifying
 
     def StartNotify(self):
